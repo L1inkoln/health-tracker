@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace  # Удаляет пробелы в конце строк
+      - id: end-of-file-fixer    # Добавляет пустую строку в конец файла
+      - id: check-yaml           # Проверяет синтаксис YAML
+      - id: check-added-large-files  # Блокирует большие файлы (>500KB)
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.5
+    hooks:
+      - id: ruff                 # Линтер и форматтер (заменяет flake8 + autopep8)
+      - id: ruff-format          # Форматирование кода
+
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black                # Форматирование Python-кода
