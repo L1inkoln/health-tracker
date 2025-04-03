@@ -1,18 +1,29 @@
 version: '3.8'
 
 services:
-  bot:
-    build: .
-    restart: always
-    env_file: .env
-    depends_on:
-      - db
-
-  db:
-    image: postgres:16
-    env_file: .env
+  fastapi:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.9
+    container_name: fastapi
+    ports:
+      - "8000:80"
+    environment:
+      - MODULE_NAME=app.main
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - .:/app
+    depends_on:
+      - rabbitmq
+    networks:
+      - app_net
 
-volumes:
-  postgres_data:
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge
