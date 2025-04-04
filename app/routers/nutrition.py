@@ -18,6 +18,7 @@ def add_nutrition(nutrition: NutritionSchema, db: Session = Depends(get_db)):
     if db_nutrition:
         # Если запись существует, прибавляем новые часы к уже существующим
         db_nutrition.calories += nutrition.calories
+        db_nutrition.water += nutrition.water
     else:
         db_nutrition = Nutrition(**nutrition.model_dump())
         db.add(nutrition)
