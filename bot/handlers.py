@@ -46,12 +46,14 @@ async def cmd_menu(message: Message):
         return
     await message.answer(
         "🔙 Вернулись в главное меню. Выберите категорию:",
-        reply_markup=send_main_menu(),  # если send_main_menu возвращает клавиатуру
+        reply_markup=send_main_menu(),
     )
 
 
 @dp.callback_query(lambda c: c.data == "get_stats")
 async def handle_stats(callback_query: CallbackQuery):
+    await callback_query.answer()
+
     if callback_query.from_user is None:
         return
     telegram_id = callback_query.from_user.id
@@ -74,12 +76,14 @@ async def handle_stats(callback_query: CallbackQuery):
 
 @dp.callback_query(lambda c: c.data == "category_sleep")
 async def process_sleep(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()  # снимаем выделение кнопки
     await callback.message.answer("Введите количество часов сна:")
     await state.set_state(Form.waiting_for_sleep)
 
 
 @dp.callback_query(lambda c: c.data == "category_nutrition")
 async def process_nutrition(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await callback.message.answer(
         "Введите количество калорий и воды через пробел (например: `2500 2`):"
     )
@@ -88,6 +92,7 @@ async def process_nutrition(callback: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data == "category_health")
 async def process_health(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await callback.message.answer("Введите количество шагов:")
     await state.set_state(Form.waiting_for_health)
 
