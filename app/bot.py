@@ -1,17 +1,18 @@
 import os
 import logging
+import requests
+from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.types import CallbackQuery
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    CallbackQuery,
+    Message,
+)
 
-# from aiogram.webhook.aiohttp_server import SimpleRequestHandler
-from aiogram.types import Message
-
-from aiogram import F
-import requests
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -19,7 +20,7 @@ API_URL = "http://127.0.0.1:8000"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Инициализация бота с проверкой токена
+# Инициализация бота
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("Токен бота не найден в .env")
@@ -28,8 +29,46 @@ bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MAR
 dp = Dispatcher()
 
 
+async def register_user(telegram_id: int):
+    """Регистрирует пользователя в FastAPI при старте"""
+    payload = {
+        "telegram_id": telegram_id,
+        "start_date": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        response = requests.post(f"{API_URL}/register/", json=payload)
+        if response.status_code == 200:
+            return True
+        elif response.status_code == 400:
+            return "Вы уже зарегистрированы."
+        else:
+            return f"Ошибка {response.status_code}: {response.text}"
+    except requests.RequestException as e:
+        return f"Ошибка подключения к API: {e}"
+
+
+async def get_statistics(telegram_id: int):
+    """Получает статистику пользователя по telegram_id"""
+    try:
+        response = requests.get(f"{API_URL}/statistics/{telegram_id}")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return f"Ошибка {response.status_code}: {response.text}"
+    except requests.RequestException as e:
+        return f"Ошибка подключения к API: {e}"
+
+
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: Message):
+    """Обрабатывает команду /start, регистрирует пользователя и выводит меню"""
+    if message.from_user is None:
+        return
+
+    user_id = message.from_user.id
+    reg_status = await register_user(user_id)
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -42,87 +81,80 @@ async def cmd_start(message: types.Message):
             [InlineKeyboardButton(text="📊 Статистика", callback_data="get_stats")],
         ]
     )
-    await message.answer("Выбери категорию:", reply_markup=keyboard)
 
-
-@dp.callback_query(F.data == "category_nutrition")
-async def choose_nutrition(callback: CallbackQuery):
-    if callback.message:
-        await callback.message.answer(
-            "Введите количество калорий или количество воды (в мл)."
+    if reg_status is True:
+        await message.answer(
+            "✅ Вы успешно зарегистрированы!\nВыберите категорию:",
+            reply_markup=keyboard,
         )
-    await callback.answer()
-
-
-@dp.callback_query(F.data == "category_sleep")
-async def choose_sleep(callback: CallbackQuery):
-    if callback.message:
-        await callback.message.answer("Введите количество часов сна.")
-    await callback.answer()
-
-
-@dp.callback_query(F.data == "category_health")
-async def choose_health(callback: CallbackQuery):
-    if callback.message:
-        await callback.message.answer("Введите количество шагов за день.")
-    await callback.answer()
-
-
-@dp.message()
-async def send_data_to_api(message: Message):
-    if message:
-        user_id = message.from_user.id
-        text = message.text.strip()
-
-    if text.isdigit():
-        value = int(text)
-        category = "unknown"
-
-        if "калорий" in message.text.lower():
-            category = "calories"
-        elif "вода" in message.text.lower():
-            category = "water"
-        elif "часов сна" in message.text.lower():
-            category = "sleep"
-        elif "шагов" in message.text.lower():
-            category = "steps"
-
-        response = requests.post(
-            f"{API_URL}/add_data/",
-            json={"user_id": user_id, "category": category, "value": value},
+    else:
+        await message.answer(
+            f"⚠ {reg_status}\nВыберите категорию:", reply_markup=keyboard
         )
 
-        if response.status_code == 200:
-            await message.answer("✅ Данные отправлены в API!")
+
+@dp.callback_query()
+async def handle_callback(callback_query: CallbackQuery):
+    """Обрабатывает callback-запросы от кнопок"""
+    if callback_query.data == "get_stats":
+        telegram_id = callback_query.from_user.id  # Получаем telegram_id пользователя
+
+        stats = await get_statistics(telegram_id)
+
+        if isinstance(stats, dict):
+            # Формируем сообщение с статистикой
+            stats_message = (
+                f"Ваша статистика:\n"
+                f"Калорий: {stats['calories']}\n"
+                f"Вода: {stats['water']} литров\n"
+                f"Сон: {stats['sleep']} часов\n"
+                f"Шагов: {stats['steps']}"
+            )
+            if callback_query.message:
+                await callback_query.message.answer(stats_message)
         else:
-            await message.answer("❌ Ошибка отправки данных!")
-    else:
-        await message.answer("❌ Введите число.")
+            # В случае ошибки
+            if callback_query.message:
+                await callback_query.message.answer(f"❌ Ошибка: {stats}")
+
+        # Убираем клавиатуру после обработки
+        if callback_query.message and isinstance(callback_query.message, types.Message):
+            await callback_query.message.delete_reply_markup()
 
 
-@dp.callback_query(F.data == "get_stats")
-async def get_stats(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    response = requests.get(f"{API_URL}/get_stats/{user_id}")
+@dp.callback_query(lambda c: c.data == "category_sleep")
+async def process_sleep(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+    await bot.send_message(callback_query.from_user.id, "Введите количество часов сна:")
 
-    if response.status_code == 200:
-        data = response.json()
-        stats = data["stats"]
-        deviations = data["deviations"]
+    # Здесь обработка сообщения от того же пользователя
+    @dp.message(lambda message: message.from_user.id == user_id)
+    async def handle_sleep_hours(message: Message):
+        if message.text:  # Проверяем, что текст не пустой и не None
+            try:
+                hours = int(message.text)  # Преобразуем введенные данные в целое число
+                payload = {"user_telegram_id": user_id, "hours": hours}
 
-        report = "\n".join(
-            [
-                f"🥗 Калории: {stats['calories']} ({'избыток' if deviations['calories'] > 0 else 'недостаток'}) {abs(deviations['calories'])}",
-                f"💧 Вода: {stats['water']} ({'избыток' if deviations['water'] > 0 else 'недостаток'}) {abs(deviations['water'])}",
-                f"😴 Сон: {stats['sleep']} ({'избыток' if deviations['sleep'] > 0 else 'недостаток'}) {abs(deviations['sleep'])}",
-                f"🚶 Шаги: {stats['steps']} ({'избыток' if deviations['steps'] > 0 else 'недостаток'}) {abs(deviations['steps'])}",
-            ]
-        )
-
-        await callback.message.answer(f"📊 Ваша статистика:\n{report}")
-    else:
-        await callback.message.answer("❌ Ошибка получения статистики!")
-    await callback.answer()
+                # Отправляем запрос на сервер для обновления данных
+                response = requests.post(f"{API_URL}/sleep/", json=payload)
+                if response.status_code == 200:
+                    await bot.send_message(
+                        callback_query.from_user.id,
+                        f"Часы сна обновлены! Новое значение: {hours} часов.",
+                    )
+                else:
+                    await bot.send_message(
+                        callback_query.from_user.id,
+                        f"Ошибка {response.status_code}: {response.text}",
+                    )
+            except ValueError:
+                await bot.send_message(
+                    callback_query.from_user.id, "Пожалуйста, введите корректное число."
+                )
+        else:
+            await bot.send_message(
+                callback_query.from_user.id, "Текст сообщения не может быть пустым."
+            )
 
 
 async def main() -> None:

@@ -1,5 +1,5 @@
-from sqlalchemy import Integer, DateTime, Float, Date
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, DateTime, BigInteger, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
 
@@ -12,44 +12,47 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    telegram_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    telegram_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
     start_date: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
-    target_calories: Mapped[int] = mapped_column(
-        Integer, default=2000
-    )  # Пример по умолчанию
-    target_water: Mapped[float] = mapped_column(Integer, default=2.0)  # В литрах
-    target_sleep: Mapped[int] = mapped_column(Integer, default=8)  # Часы
-    created_at: Mapped[DateTime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
-    updated_at: Mapped[DateTime] = mapped_column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
-    )
+
+    # Связи с другими таблицами
+    health: Mapped["Health"] = relationship(back_populates="user", uselist=False)
+    sleep: Mapped["Sleep"] = relationship(back_populates="user", uselist=False)
+    nutrition: Mapped["Nutrition"] = relationship(back_populates="user", uselist=False)
 
 
 class Nutrition(Base):
     __tablename__ = "nutrition"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    calories: Mapped[int] = mapped_column(Integer, nullable=False)
-    water: Mapped[float] = mapped_column(Float, nullable=False)
-    date: Mapped[Date] = mapped_column(Date, nullable=False)
+    user_telegram_id: Mapped[int] = mapped_column(
+        ForeignKey("users.telegram_id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    calories: Mapped[int] = mapped_column(Integer, default=0)
+    water: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped["User"] = relationship(back_populates="nutrition")
 
 
 class Sleep(Base):
     __tablename__ = "sleep"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    hours: Mapped[int] = mapped_column(Integer, nullable=False)
-    date: Mapped[Date] = mapped_column(Date, nullable=False)
+    user_telegram_id: Mapped[int] = mapped_column(
+        ForeignKey("users.telegram_id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    hours: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped["User"] = relationship(back_populates="sleep")
 
 
 class Health(Base):
     __tablename__ = "health"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    steps: Mapped[int] = mapped_column(Integer, nullable=False)
-    date: Mapped[Date] = mapped_column(Date, nullable=False)
+    user_telegram_id: Mapped[int] = mapped_column(
+        ForeignKey("users.telegram_id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    steps: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped["User"] = relationship(back_populates="health")

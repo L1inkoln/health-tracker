@@ -9,8 +9,18 @@ router = APIRouter()
 
 @router.post("/nutrition/", response_model=NutritionSchema)
 def add_nutrition(nutrition: NutritionSchema, db: Session = Depends(get_db)):
-    db_nutrition = Nutrition(**nutrition.model_dump())
-    db.add(db_nutrition)
+    # Ищем существующую запись по telegram_id
+    db_nutrition = (
+        db.query(Nutrition)
+        .filter(Nutrition.user_telegram_id == nutrition.user_telegram_id)
+        .first()
+    )
+    if db_nutrition:
+        # Если запись существует, прибавляем новые часы к уже существующим
+        db_nutrition.calories += nutrition.calories
+    else:
+        db_nutrition = Nutrition(**nutrition.model_dump())
+        db.add(nutrition)
     db.commit()
     db.refresh(db_nutrition)
     return db_nutrition
