@@ -40,6 +40,16 @@ async def cmd_start(message: Message):
         )
 
 
+@dp.message(Command("menu"))
+async def cmd_menu(message: Message):
+    if message.from_user is None:
+        return
+    await message.answer(
+        "🔙 Вернулись в главное меню. Выберите категорию:",
+        reply_markup=send_main_menu(),  # если send_main_menu возвращает клавиатуру
+    )
+
+
 @dp.callback_query(lambda c: c.data == "get_stats")
 async def handle_stats(callback_query: CallbackQuery):
     if callback_query.from_user is None:
