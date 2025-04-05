@@ -8,6 +8,8 @@ __pycache__/
 
 alembic.ini
 celerybeat-schedule*
+locustfile.py
+test.py
 
 # Distribution / packaging
 .Python
