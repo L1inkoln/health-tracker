@@ -1,5 +1,4 @@
 import logging
-import requests
 from aiogram.types import (
     CallbackQuery,
     Message,
@@ -7,8 +6,14 @@ from aiogram.types import (
 from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from config import API_URL
-from utils import register_user, get_statistics, send_main_menu
+from utils import (
+    register_user,
+    get_statistics,
+    send_main_menu,
+    update_sleep,
+    update_nutrition,
+    update_health,
+)
 from dispatcher import dp
 
 
@@ -105,12 +110,8 @@ async def handle_sleep_input(message: Message, state: FSMContext):
     user_id = message.from_user.id
     try:
         hours = int(message.text)
-        payload = {"user_telegram_id": user_id, "hours": hours}
-        response = requests.post(f"{API_URL}/sleep/", json=payload)
-        if response.status_code == 200:
-            await message.answer(f"✅ Часы сна обновлены: {hours} часов.")
-        else:
-            await message.answer(f"❌ Ошибка {response.status_code}: {response.text}")
+        result = await update_sleep(user_telegram_id=user_id, hours=hours)
+        await message.answer(result)
     except ValueError:
         await message.answer("Введите число.")
     await state.clear()
@@ -125,18 +126,10 @@ async def handle_nutrition_input(message: Message, state: FSMContext):
         calories_str, water_str = message.text.split()
         calories = int(calories_str)
         water = float(water_str)
-        payload = {
-            "user_telegram_id": message.from_user.id,
-            "calories": calories,
-            "water": water,
-        }
-        response = requests.post(f"{API_URL}/nutrition/", json=payload)
-        if response.status_code == 200:
-            await message.answer(
-                f"✅ Питание обновлено: {calories} калорий, {water} л воды."
-            )
-        else:
-            await message.answer(f"❌ Ошибка {response.status_code}: {response.text}")
+        result = await update_nutrition(
+            user_telegram_id=message.from_user.id, calories=calories, water=water
+        )
+        await message.answer(result)
     except Exception:
         await message.answer(
             "Введите данные в формате: калории вода (например: 2000 1.5)"
@@ -151,12 +144,8 @@ async def handle_health_input(message: Message, state: FSMContext):
         return
     try:
         steps = int(message.text)
-        payload = {"user_telegram_id": message.from_user.id, "steps": steps}
-        response = requests.post(f"{API_URL}/health/", json=payload)
-        if response.status_code == 200:
-            await message.answer(f"✅ Шаги обновлены: {steps}")
-        else:
-            await message.answer(f"❌ Ошибка {response.status_code}: {response.text}")
+        result = await update_health(user_telegram_id=message.from_user.id, steps=steps)
+        await message.answer(result)
     except ValueError:
         await message.answer("Введите корректное число.")
     await state.clear()

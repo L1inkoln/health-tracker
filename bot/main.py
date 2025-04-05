@@ -1,12 +1,19 @@
 import asyncio
-from aiogram.types import BotCommand
 import logging
+from aiogram.types import BotCommand
 from dispatcher import bot, dp
+from utils import client
 import handlers  # noqa: F401
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+async def on_shutdown():
+    """Закрытие клиента при завершении работы"""
+    await client.aclose()
+    print("🚪 HTTP клиент закрыт")
 
 
 async def main():
@@ -19,7 +26,10 @@ async def main():
         ]
     )
 
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await on_shutdown()
 
 
 if __name__ == "__main__":
