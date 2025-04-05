@@ -40,38 +40,26 @@ def get_statistics(telegram_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Статистика по питанию
-    nutrition_data = (
+    # Использование select_from для явного указания начальной таблицы
+    data = (
         db.query(
-            func.sum(Nutrition.calories).label("calories"),
-            func.sum(Nutrition.water).label("water"),
+            func.coalesce(func.sum(Nutrition.calories), 0).label("calories"),
+            func.coalesce(func.sum(Nutrition.water), 0).label("water"),
+            func.coalesce(func.sum(Sleep.hours), 0).label("sleep"),
+            func.coalesce(func.sum(Health.steps), 0).label("steps"),
         )
-        .filter(Nutrition.user_telegram_id == telegram_id)
+        .select_from(User)
+        .outerjoin(Nutrition, Nutrition.user_telegram_id == User.telegram_id)
+        .outerjoin(Sleep, Sleep.user_telegram_id == User.telegram_id)
+        .outerjoin(Health, Health.user_telegram_id == User.telegram_id)
+        .filter(User.telegram_id == telegram_id)
         .first()
     )
-
-    # Статистика по сну
-    sleep_data = (
-        db.query(func.sum(Sleep.hours).label("sleep"))
-        .filter(Sleep.user_telegram_id == telegram_id)
-        .first()
-    )
-
-    # Статистика по здоровью
-    health_data = (
-        db.query(func.sum(Health.steps).label("steps"))
-        .filter(Health.user_telegram_id == telegram_id)
-        .first()
-    )
-
-    return {
-        "user_telegram_id": telegram_id,
-        "calories": (
-            nutrition_data.calories if nutrition_data and nutrition_data.calories else 0
-        ),
-        "water": (
-            nutrition_data.water if nutrition_data and nutrition_data.water else 0
-        ),
-        "sleep": (sleep_data.sleep if sleep_data and sleep_data.sleep else 0),
-        "steps": (health_data.steps if health_data and health_data.steps else 0),
-    }
+    if data is not None:
+        return {
+            "user_telegram_id": telegram_id,
+            "calories": data.calories,
+            "water": data.water,
+            "sleep": data.sleep,
+            "steps": data.steps,
+        }
