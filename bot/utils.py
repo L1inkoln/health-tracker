@@ -5,6 +5,7 @@ from config import API_URL
 
 
 def send_main_menu() -> InlineKeyboardMarkup:
+    """Функция для вывода меню пользователю`"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [

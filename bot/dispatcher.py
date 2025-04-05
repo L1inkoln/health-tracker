@@ -7,6 +7,7 @@ from aiogram.client.default import DefaultBotProperties
 if not BOT_TOKEN:
     raise ValueError("Токен бота не найден в .env")
 
+# Инициализация бота и диспетчера
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
