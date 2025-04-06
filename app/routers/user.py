@@ -70,3 +70,31 @@ def get_statistics(telegram_id: int, db: Session = Depends(get_db)):
             "sleep": data.sleep,
             "steps": data.steps,
         }
+
+
+@router.patch("/reset/{telegram_id}", dependencies=[Depends(verify_token)])
+def reset_statistics(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Обновляем существующие записи
+    db.query(Nutrition).filter(Nutrition.user_telegram_id == telegram_id).update(
+        {
+            "calories": 0,
+            "water": 0.0,
+        }
+    )
+    db.query(Sleep).filter(Sleep.user_telegram_id == telegram_id).update(
+        {
+            "hours": 0,
+        }
+    )
+    db.query(Health).filter(Health.user_telegram_id == telegram_id).update(
+        {
+            "steps": 0,
+        }
+    )
+
+    db.commit()
+    return {"detail": "Статистика сброшена до нуля"}

@@ -15,6 +15,7 @@ from utils import (
     update_health,
     plural_form,
     compare,
+    reset_statistics,
 )
 from dispatcher import dp
 
@@ -55,6 +56,24 @@ async def cmd_menu(message: Message):
         "🔙 Вернулись в главное меню. Выберите категорию:",
         reply_markup=send_main_menu(),
     )
+
+
+@dp.message(Command("reset"))
+async def reset_stats_handler(message: Message):
+    if message.from_user is None:
+        return
+    telegram_id = message.from_user.id
+    response = await reset_statistics(telegram_id)
+    if response is True:
+        await message.answer(
+            "🧹 Ваша статистика была успешно сброшена.",
+            reply_markup=send_main_menu(),
+        )
+    else:
+        await message.answer(
+            "❌ Ошибка при сбросе статистики.",
+            reply_markup=send_main_menu(),
+        )
 
 
 @dp.callback_query(lambda c: c.data == "get_stats")

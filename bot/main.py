@@ -1,7 +1,6 @@
 import asyncio
 import logging
-from aiogram.types import BotCommand
-from dispatcher import bot, dp
+from dispatcher import bot, dp, set_bot_commands
 from utils import client, get_jwt_token
 import handlers  # noqa: F401
 
@@ -19,12 +18,7 @@ async def on_shutdown():
 async def main():
     print("✅ Бот запущен")
     await get_jwt_token()
-    await bot.set_my_commands(
-        [
-            BotCommand(command="start", description="Начать работу с ботом"),
-            BotCommand(command="menu", description="Показать главное меню"),
-        ]
-    )
+    await set_bot_commands()
 
     try:
         await dp.start_polling(bot)

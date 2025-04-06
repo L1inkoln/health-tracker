@@ -77,6 +77,21 @@ async def get_statistics(telegram_id: int):
         return f"Ошибка подключения к API: {e}"
 
 
+async def reset_statistics(telegram_id: int):
+    """Сбрасывает статистику пользователя"""
+    try:
+        response = await client.patch(
+            f"{API_URL}/reset/{telegram_id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+        if response.status_code == 200:
+            return True
+        else:
+            return f"Ошибка {response.status_code}: {response.text}"
+    except httpx.RequestError as e:
+        return f"Ошибка подключения к API: {e}"
+
+
 def plural_form(n: int | float, forms: tuple[str, str, str]) -> str:
     n = abs(int(n))
     if n % 10 == 1 and n % 100 != 11:
