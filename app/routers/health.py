@@ -3,11 +3,14 @@ from sqlalchemy.orm import Session
 from app.models.models import Health
 from app.schemas.health import HealthSchema
 from app.session import get_db
+from app.auth import verify_token
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 
-@router.post("/health/", response_model=HealthSchema)
+@router.post(
+    "/health/", dependencies=[Depends(verify_token)], response_model=HealthSchema
+)
 def add_health(nutrition: HealthSchema, db: Session = Depends(get_db)):
     # Ищем существующую запись по telegram_id
     db_health = (

@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.models.models import Nutrition
 from app.schemas.nutrition import NutritionSchema
-from app.session import get_db  # Функция для подключения к базе данных
+from app.session import get_db
+from app.auth import verify_token
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 
-@router.post("/nutrition/", response_model=NutritionSchema)
+@router.post(
+    "/nutrition/", dependencies=[Depends(verify_token)], response_model=NutritionSchema
+)
 def add_nutrition(nutrition: NutritionSchema, db: Session = Depends(get_db)):
     # Ищем существующую запись по telegram_id
     db_nutrition = (

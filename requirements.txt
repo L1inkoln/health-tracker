@@ -7,3 +7,4 @@ httpx                 # для async-запросов (например, в Aiog
 aiogram
 celery
 python-dotenv
+pyjwt

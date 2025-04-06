@@ -4,11 +4,14 @@ from sqlalchemy import func
 from app.models.models import User, Nutrition, Sleep, Health
 from app.schemas.user import UserSchema
 from app.session import get_db
+from app.auth import verify_token
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 
-@router.post("/register/", response_model=UserSchema)
+@router.post(
+    "/register/", dependencies=[Depends(verify_token)], response_model=UserSchema
+)
 def create_user(user: UserSchema, db: Session = Depends(get_db)):
     # Проверяем, есть ли уже пользователь с таким telegram_id
     db_user = db.query(User).filter(User.telegram_id == user.telegram_id).first()
@@ -34,7 +37,11 @@ def create_user(user: UserSchema, db: Session = Depends(get_db)):
     return db_user
 
 
-@router.get("/statistics/{telegram_id}", response_model=dict)
+@router.get(
+    "/statistics/{telegram_id}",
+    dependencies=[Depends(verify_token)],
+    response_model=dict,
+)
 def get_statistics(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:

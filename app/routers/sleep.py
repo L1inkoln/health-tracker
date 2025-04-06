@@ -3,11 +3,14 @@ from sqlalchemy.orm import Session
 from app.models.models import Sleep
 from app.schemas.sleep import SleepSchema
 from app.session import get_db
+from app.auth import verify_token
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 
-@router.post("/sleep/", response_model=SleepSchema)
+@router.post(
+    "/sleep/", dependencies=[Depends(verify_token)], response_model=SleepSchema
+)
 def add_sleep(sleep: SleepSchema, db: Session = Depends(get_db)):
     # Ищем существующую запись по telegram_id
     db_sleep = (
