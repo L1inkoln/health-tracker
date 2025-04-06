@@ -13,6 +13,8 @@ from utils import (
     update_sleep,
     update_nutrition,
     update_health,
+    plural_form,
+    compare,
 )
 from dispatcher import dp
 
@@ -63,18 +65,45 @@ async def handle_stats(callback_query: CallbackQuery):
         return
     telegram_id = callback_query.from_user.id
     stats = await get_statistics(telegram_id)
+
     if isinstance(stats, dict):
-        stats_message = (
-            f"📊 Ваша статистика:\n"
-            f"🍽 Калорий: {stats['calories']}\n"
-            f"💧 Вода: {stats['water']} литров\n"
-            f"😴 Сон: {stats['sleep']} часов\n"
-            f"🚶 Шагов: {stats['steps']}"
+        norm_calories = 2300
+        norm_water = 2.0
+        norm_sleep = 8
+        norm_steps = 5000
+
+        # Данные пользователя
+        calories = stats["calories"]
+        water = stats["water"]
+        sleep = stats["sleep"]
+        steps = stats["steps"]
+
+        # Форматирование окончаний
+        water_label = plural_form(water, ("литр", "литра", "литров"))
+        sleep_label = plural_form(sleep, ("час", "часа", "часов"))
+        steps_label = plural_form(steps, ("шаг", "шага", "шагов"))
+        calories_label = plural_form(calories, ("калория", "калории", "калорий"))
+
+        water_note = compare(water, norm_water, "Воды достаточно", "Недостаток воды")
+        sleep_note = compare(sleep, norm_sleep, "Сон в норме", "Недостаток сна")
+        steps_note = compare(steps, norm_steps, "Хорошая активность", "Мало шагов")
+        calories_note = compare(
+            calories, norm_calories, "Калорийность достаточная", "Недостаток калорий"
         )
-        await callback_query.message.answer(stats_message)
+
+        stats_message = (
+            f"📊 <b>Ваша статистика:</b>\n\n"
+            f"🍽 Калории: {calories} {calories_label}\n{calories_note}\n\n"
+            f"💧 Вода: {water} {water_label}\n{water_note}\n\n"
+            f"😴 Сон: {sleep} {sleep_label}\n{sleep_note}\n\n"
+            f"🚶 Шаги: {steps} {steps_label}\n{steps_note}"
+        )
+
+        await callback_query.message.answer(stats_message, parse_mode="HTML")
         await callback_query.message.answer(
             "🔙 Возврат в меню", reply_markup=send_main_menu()
         )
+
     else:
         await callback_query.message.answer(f"❌ Ошибка: {stats}")
 
@@ -90,7 +119,7 @@ async def process_sleep(callback: CallbackQuery, state: FSMContext):
 async def process_nutrition(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.answer(
-        "Введите количество калорий и воды через пробел (например: `2500 2`):"
+        "Введите количество калорий и литры воды через пробел (например: `2500 0.5`):"
     )
     await state.set_state(Form.waiting_for_nutrition)
 
@@ -102,7 +131,6 @@ async def process_health(callback: CallbackQuery, state: FSMContext):
     await state.set_state(Form.waiting_for_health)
 
 
-# Ввод данных
 @dp.message(Form.waiting_for_sleep)
 async def handle_sleep_input(message: Message, state: FSMContext):
     if message.from_user is None:
@@ -110,10 +138,15 @@ async def handle_sleep_input(message: Message, state: FSMContext):
     user_id = message.from_user.id
     try:
         hours = int(message.text)
-        result = await update_sleep(user_telegram_id=user_id, hours=hours)
-        await message.answer(result)
+        if hours < 0 or hours > 24:
+            await message.answer(
+                "❌ Некорректное значение. Введите количество часов сна от 0 до 24."
+            )
+        else:
+            result = await update_sleep(user_telegram_id=user_id, hours=hours)
+            await message.answer(result)
     except ValueError:
-        await message.answer("Введите число.")
+        await message.answer(" ❌ Введите целое число.")
     await state.clear()
     await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())
 
@@ -126,13 +159,20 @@ async def handle_nutrition_input(message: Message, state: FSMContext):
         calories_str, water_str = message.text.split()
         calories = int(calories_str)
         water = float(water_str)
-        result = await update_nutrition(
-            user_telegram_id=message.from_user.id, calories=calories, water=water
-        )
-        await message.answer(result)
+
+        if not (0 <= calories <= 10000):
+            await message.answer("❌ Калорий должно быть от 0 до 10000.")
+        elif not (0 <= water <= 10):
+            await message.answer("❌ Воды должно быть от 0 до 10 литров.")
+        else:
+            result = await update_nutrition(
+                user_telegram_id=message.from_user.id, calories=calories, water=water
+            )
+            await message.answer(result)
+
     except Exception:
         await message.answer(
-            "Введите данные в формате: калории вода (например: 2000 1.5)"
+            "❌ Ошибка введите данные в формате: калории вода (например: 2000 0.5)"
         )
     await state.clear()
     await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())
@@ -144,9 +184,14 @@ async def handle_health_input(message: Message, state: FSMContext):
         return
     try:
         steps = int(message.text)
-        result = await update_health(user_telegram_id=message.from_user.id, steps=steps)
-        await message.answer(result)
+        if steps < 0 or steps > 50000:
+            await message.answer("❌ Шагов должно быть от 0 до 50000.")
+        else:
+            result = await update_health(
+                user_telegram_id=message.from_user.id, steps=steps
+            )
+            await message.answer(result)
     except ValueError:
-        await message.answer("Введите корректное число.")
+        await message.answer("❌ Ошибка введите целое число.")
     await state.clear()
     await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())

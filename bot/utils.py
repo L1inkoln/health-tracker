@@ -77,6 +77,24 @@ async def get_statistics(telegram_id: int):
         return f"Ошибка подключения к API: {e}"
 
 
+def plural_form(n: int | float, forms: tuple[str, str, str]) -> str:
+    n = abs(int(n))
+    if n % 10 == 1 and n % 100 != 11:
+        return forms[0]
+    elif 2 <= n % 10 <= 4 and not (12 <= n % 100 <= 14):
+        return forms[1]
+    else:
+        return forms[2]
+
+
+# Подсказки
+def compare(val, norm, good_msg, low_msg):
+    if val >= norm:
+        return f"✅ {good_msg}"
+    else:
+        return f"⚠️ {low_msg} (норма: {norm})"
+
+
 async def update_sleep(user_telegram_id: int, hours: int):
     """Обновляет количество часов сна для пользователя"""
     payload = {"user_telegram_id": user_telegram_id, "hours": hours}

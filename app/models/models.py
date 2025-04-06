@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, DateTime, BigInteger, ForeignKey
+from sqlalchemy import Integer, DateTime, BigInteger, ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
@@ -29,7 +29,7 @@ class Nutrition(Base):
         ForeignKey("users.telegram_id", ondelete="CASCADE"), unique=True, nullable=False
     )
     calories: Mapped[int] = mapped_column(Integer, default=0)
-    water: Mapped[int] = mapped_column(Integer, default=0)
+    water: Mapped[float] = mapped_column(Float, default=0)
 
     user: Mapped["User"] = relationship(back_populates="nutrition")
 
