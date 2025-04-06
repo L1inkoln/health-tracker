@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from app.routers import user, nutrition, sleep, health, auth
+import logging
 
-# from app.session import init_db
+logger = logging.getLogger(__name__)
 
 
-app = FastAPI(title="Healthbot")
+app = FastAPI(
+    title="Healthbot", description="API для Telegram-бота отслеживания здоровья"
+)
 
-# Подключаем маршруты
+# Подключаем роуты
 app.include_router(user.router)
 app.include_router(nutrition.router)
 app.include_router(sleep.router)

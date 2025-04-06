@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 router = APIRouter(tags=["auth"])
 
+# Пароль для получения jwt боту и ключ шифрования
 BOT_SECRET = cast(str, os.getenv("BOT_SECRET"))
 JWT_SECRET = cast(str, os.getenv("JWT_SECRET"))
 
@@ -15,6 +16,7 @@ class BotAuthRequest(BaseModel):
     password: str
 
 
+# Выдача токена боту
 @router.post("/auth/bot")
 def auth_bot(request: BotAuthRequest):
     if request.password != BOT_SECRET:

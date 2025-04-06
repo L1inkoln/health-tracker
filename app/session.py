@@ -17,10 +17,8 @@ if DATABASE_URL:
 else:
     raise ValueError("DATABASE_URL is not set in environment variables")
 
-# logging.basicConfig(level=logging.INFO)
-# logging.info(f"Используемая база данных: {DATABASE_URL}")
 
-# Используем async_sessionmaker для создания сессий
+# Cоздание сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

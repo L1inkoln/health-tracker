@@ -9,21 +9,19 @@ from app.auth import verify_token
 router = APIRouter(tags=["users"])
 
 
+# Добавление нового пользователя и заполнение 0 значениями других таблиц
 @router.post(
     "/register/", dependencies=[Depends(verify_token)], response_model=UserSchema
 )
 def create_user(user: UserSchema, db: Session = Depends(get_db)):
-    # Проверяем, есть ли уже пользователь с таким telegram_id
     db_user = db.query(User).filter(User.telegram_id == user.telegram_id).first()
     if db_user:
         raise HTTPException(status_code=400, detail="User already exists")
 
-    # Создаем нового пользователя в таблице users
     db_user = User(**user.model_dump())
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-
     # Создаем записи в таблицах health, sleep и nutrition с user_telegram_id
     db_health = Health(user_telegram_id=db_user.telegram_id, steps=0)
     db_sleep = Sleep(user_telegram_id=db_user.telegram_id, hours=0)
@@ -37,6 +35,7 @@ def create_user(user: UserSchema, db: Session = Depends(get_db)):
     return db_user
 
 
+# Получение всей статистики по tg id
 @router.get(
     "/statistics/{telegram_id}",
     dependencies=[Depends(verify_token)],
@@ -46,7 +45,6 @@ def get_statistics(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
     # Использование select_from для явного указания начальной таблицы
     data = (
         db.query(
@@ -72,12 +70,12 @@ def get_statistics(telegram_id: int, db: Session = Depends(get_db)):
         }
 
 
+# Обработка команды для сброса статистики
 @router.patch("/reset/{telegram_id}", dependencies=[Depends(verify_token)])
 def reset_statistics(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
     # Обновляем существующие записи
     db.query(Nutrition).filter(Nutrition.user_telegram_id == telegram_id).update(
         {
@@ -95,6 +93,5 @@ def reset_statistics(telegram_id: int, db: Session = Depends(get_db)):
             "steps": 0,
         }
     )
-
     db.commit()
     return {"detail": "Статистика сброшена до нуля"}
