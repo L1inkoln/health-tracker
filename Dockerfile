@@ -1,10 +1,11 @@
-FROM python:3.11
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
-RUN pip install poetry && poetry install --no-root
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "-m", "app.bot"]  # Запуск бота по умолчанию
+# Bсполняемый скрипт при запуске
+CMD ["bash", "-c", "uvicorn app.main:app & sleep 2 && python bot/main.py"]
