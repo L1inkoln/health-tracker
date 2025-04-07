@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.models import Sleep
 from app.schemas.sleep import SleepSchema
 from app.session import get_db
-from app.auth import verify_token
+from app.verify import verify_token
 
 router = APIRouter(tags=["users"])
 

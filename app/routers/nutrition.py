@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.models import Nutrition
 from app.schemas.nutrition import NutritionSchema
 from app.session import get_db
-from app.auth import verify_token
+from app.verify import verify_token
 
 router = APIRouter(tags=["users"])
 

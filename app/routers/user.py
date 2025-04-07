@@ -4,7 +4,7 @@ from sqlalchemy import func
 from app.models.models import User, Nutrition, Sleep, Health
 from app.schemas.user import UserSchema
 from app.session import get_db
-from app.auth import verify_token
+from app.verify import verify_token
 
 router = APIRouter(tags=["users"])
 
