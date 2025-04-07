@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.models.models import Health
+from app.models.health import Health
 from app.schemas.health import HealthSchema
 from app.session import get_db
 from app.verify import verify_token

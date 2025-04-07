@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.models.models import Sleep
+from app.models import Sleep
 from app.schemas.sleep import SleepSchema
 from app.session import get_db
 from app.verify import verify_token

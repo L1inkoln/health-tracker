@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models.models import User, Nutrition, Sleep, Health
+from app.models import User, Nutrition, Sleep, Health
 from app.schemas.user import UserSchema
 from app.session import get_db
 from app.verify import verify_token
