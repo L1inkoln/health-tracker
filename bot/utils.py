@@ -163,3 +163,19 @@ async def update_health(user_telegram_id: int, steps: int):
             return f"❌ Ошибка {response.status_code}: {response.text}"
     except httpx.RequestError as e:
         return f"Ошибка подключения к API: {e}"
+
+
+async def delete_user(user_telegram_id: int):
+    """Удаляет пользователя из базы"""
+    try:
+        response = await client.request(
+            method="DELETE",
+            url=f"{API_URL}/delete/{user_telegram_id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+        if response.status_code == 200:
+            return True
+        else:
+            return f"❌ Ошибка при удалении {response.status_code}: {response.text}"
+    except httpx.RequestError as e:
+        return f"Ошибка подключения к API: {e}"

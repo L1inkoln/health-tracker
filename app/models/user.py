@@ -12,9 +12,11 @@ class User(Base):
     start_date: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
 
     health: Mapped["Health"] = relationship(  # type: ignore  # noqa: F821
-        "Health", back_populates="user", uselist=False
+        "Health", back_populates="user", uselist=False, passive_deletes=True
     )
-    sleep: Mapped["Sleep"] = relationship("Sleep", back_populates="user", uselist=False)  # type: ignore  # noqa: F821
+    sleep: Mapped["Sleep"] = relationship(  # type: ignore  # noqa: F821
+        "Sleep", back_populates="user", uselist=False, passive_deletes=True
+    )
     nutrition: Mapped["Nutrition"] = relationship(  # type: ignore  # noqa: F821
-        "Nutrition", back_populates="user", uselist=False
+        "Nutrition", back_populates="user", uselist=False, passive_deletes=True
     )

@@ -95,3 +95,14 @@ def reset_statistics(telegram_id: int, db: Session = Depends(get_db)):
     )
     db.commit()
     return {"detail": "Статистика сброшена до нуля"}
+
+
+@router.delete("/delete/{telegram_id}", dependencies=[Depends(verify_token)])
+def delete_user(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db.delete(user)
+    db.commit()
+    return {"detail": f"Пользователь с telegram_id {telegram_id} удалён"}

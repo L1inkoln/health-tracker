@@ -16,6 +16,7 @@ from utils import (
     plural_form,
     compare,
     reset_statistics,
+    delete_user,
 )
 from dispatcher import dp
 
@@ -72,6 +73,24 @@ async def reset_stats_handler(message: Message):
     else:
         await message.answer(
             "❌ Ошибка при сбросе статистики.",
+            reply_markup=send_main_menu(),
+        )
+
+
+@dp.message(Command("delete"))
+async def delete_user_handler(message: Message):
+    if message.from_user is None:
+        return
+    telegram_id = message.from_user.id
+    response = await delete_user(telegram_id)
+    if response is True:
+        await message.answer(
+            "Все данные были удалены.",
+            reply_markup=send_main_menu(),
+        )
+    else:
+        await message.answer(
+            "❌ Ошибка при удалении попробуйте ещё раз.",
             reply_markup=send_main_menu(),
         )
 

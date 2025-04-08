@@ -20,6 +20,7 @@ async def set_bot_commands():
         [
             BotCommand(command="start", description="Начать работу с ботом"),
             BotCommand(command="menu", description="Показать главное меню"),
-            BotCommand(command="reset", description="Сбросить статистику"),
+            BotCommand(command="reset", description="Сбросить статистику за день"),
+            BotCommand(command="delete", description="Удалить все записи и закончить"),
         ]
     )
