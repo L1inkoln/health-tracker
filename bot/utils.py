@@ -35,6 +35,11 @@ def send_main_menu() -> InlineKeyboardMarkup:
             ],
             [InlineKeyboardButton(text="😴 Сон", callback_data="category_sleep")],
             [InlineKeyboardButton(text="🚶 Здоровье", callback_data="category_health")],
+            [
+                InlineKeyboardButton(
+                    text="🎯 Обновить цели", callback_data="update_goals"
+                )
+            ],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="get_stats")],
         ]
     )
@@ -71,6 +76,37 @@ async def get_statistics(telegram_id: int):
         )
         if response.status_code == 200:
             return response.json()
+        else:
+            return f"Ошибка {response.status_code}: {response.text}"
+    except httpx.RequestError as e:
+        return f"Ошибка подключения к API: {e}"
+
+
+async def get_goals(telegram_id: int):
+    """Получает цели пользователя по telegram_id"""
+    try:
+        response = await client.get(
+            f"{API_URL}/goals/{telegram_id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return f"Ошибка {response.status_code}: {response.text}"
+    except httpx.RequestError as e:
+        return f"Ошибка подключения к API: {e}"
+
+
+async def update_goals(telegram_id: int, payload: dict):
+    """Обновляет одну или несколько целей пользователя"""
+    try:
+        response = await client.patch(
+            f"{API_URL}/goals/{telegram_id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=payload,
+        )
+        if response.status_code == 200:
+            return True
         else:
             return f"Ошибка {response.status_code}: {response.text}"
     except httpx.RequestError as e:

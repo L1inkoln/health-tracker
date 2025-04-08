@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models import User, Nutrition, Sleep, Health
+from app.models import User, Nutrition, Sleep, Health, UserGoals
 from app.schemas.user import UserSchema
 from app.session import get_db
 from app.verify import verify_token
@@ -23,15 +23,13 @@ def create_user(user: UserSchema, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     # Создаем записи в таблицах health, sleep и nutrition с user_telegram_id
+    db_goals = UserGoals(user_telegram_id=db_user.telegram_id)
     db_health = Health(user_telegram_id=db_user.telegram_id, steps=0)
     db_sleep = Sleep(user_telegram_id=db_user.telegram_id, hours=0)
     db_nutrition = Nutrition(user_telegram_id=db_user.telegram_id, calories=0, water=0)
 
-    db.add(db_health)
-    db.add(db_sleep)
-    db.add(db_nutrition)
+    db.add_all([db_goals, db_health, db_sleep, db_nutrition])
     db.commit()
-
     return db_user
 
 
@@ -68,6 +66,55 @@ def get_statistics(telegram_id: int, db: Session = Depends(get_db)):
             "sleep": data.sleep,
             "steps": data.steps,
         }
+
+
+@router.get(
+    "/goals/{telegram_id}",
+    dependencies=[Depends(verify_token)],
+    response_model=dict,
+)
+def get_goals(telegram_id: int, db: Session = Depends(get_db)):
+    goals = (
+        db.query(UserGoals).filter(UserGoals.user_telegram_id == telegram_id).first()
+    )
+    if not goals:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "water_goal": goals.water_goal,
+        "calories_goal": goals.calories_goal,
+        "steps_goal": goals.steps_goal,
+        "sleep_goal": goals.sleep_goal,
+    }
+
+
+@router.patch(
+    "/goals/{telegram_id}",
+    dependencies=[Depends(verify_token)],
+    response_model=dict,
+)
+def update_goals(telegram_id: int, goals: dict, db: Session = Depends(get_db)):
+    user = db.query(UserGoals).filter(UserGoals.user_telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.water_goal = goals.get("water_goal", user.water_goal)
+    user.calories_goal = goals.get("calories_goal", user.calories_goal)
+    user.sleep_goal = goals.get("sleep_goal", user.sleep_goal)
+    user.steps_goal = goals.get("steps_goal", user.steps_goal)
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": "Цели успешно обновлены",
+        "goals": {
+            "water_goal": user.water_goal,
+            "calories_goal": user.calories_goal,
+            "sleep_goal": user.sleep_goal,
+            "steps_goal": user.steps_goal,
+        },
+    }
 
 
 # Обработка команды для сброса статистики

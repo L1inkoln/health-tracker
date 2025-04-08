@@ -10,6 +10,7 @@ from utils import (
     register_user,
     get_statistics,
     send_main_menu,
+    update_goals,
     update_sleep,
     update_nutrition,
     update_health,
@@ -17,6 +18,7 @@ from utils import (
     compare,
     reset_statistics,
     delete_user,
+    get_goals,
 )
 from dispatcher import dp
 
@@ -29,6 +31,11 @@ class Form(StatesGroup):
     waiting_for_sleep = State()
     waiting_for_nutrition = State()
     waiting_for_health = State()
+
+
+class GoalForm(StatesGroup):
+    choosing_goal = State()
+    updating_goal = State()
 
 
 @dp.message(Command("start"))
@@ -101,14 +108,19 @@ async def handle_stats(callback_query: CallbackQuery):
 
     if callback_query.from_user is None:
         return
-    telegram_id = callback_query.from_user.id
-    stats = await get_statistics(telegram_id)
 
-    if isinstance(stats, dict):
-        norm_calories = 2300
-        norm_water = 2.0
-        norm_sleep = 8
-        norm_steps = 5000
+    telegram_id = callback_query.from_user.id
+
+    # Получаем статистику и цели
+    stats = await get_statistics(telegram_id)
+    goals = await get_goals(telegram_id)
+
+    if isinstance(stats, dict) and isinstance(goals, dict):
+        # Цели пользователя
+        norm_calories = goals["calories_goal"]
+        norm_water = goals["water_goal"]
+        norm_sleep = goals["sleep_goal"]
+        norm_steps = goals["steps_goal"]
 
         # Данные пользователя
         calories = stats["calories"]
@@ -143,7 +155,11 @@ async def handle_stats(callback_query: CallbackQuery):
         )
 
     else:
-        await callback_query.message.answer(f"❌ Ошибка: {stats}")
+        await callback_query.message.answer("❌ Ошибка получения данных.")
+        if not isinstance(stats, dict):
+            await callback_query.message.answer(f"❌ Статистика: {stats}")
+        if not isinstance(goals, dict):
+            await callback_query.message.answer(f"❌ Цели: {goals}")
 
 
 @dp.callback_query(lambda c: c.data == "category_sleep")
@@ -167,6 +183,21 @@ async def process_health(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.answer("Введите количество шагов:")
     await state.set_state(Form.waiting_for_health)
+
+
+@dp.callback_query(lambda c: c.data == "update_goals")
+async def choose_goal_to_update(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await callback.message.answer(
+        "Что хотите обновить?\n"
+        "1️⃣ Калории\n"
+        "2️⃣ Воду\n"
+        "3️⃣ Сон\n"
+        "4️⃣ Шаги\n"
+        "5️⃣ Все сразу\n\n"
+        "Введите номер (например: 1 или 5):"
+    )
+    await state.set_state(GoalForm.choosing_goal)
 
 
 @dp.message(Form.waiting_for_sleep)
@@ -231,5 +262,72 @@ async def handle_health_input(message: Message, state: FSMContext):
             await message.answer(result)
     except ValueError:
         await message.answer("❌ Ошибка введите целое число.")
+    await state.clear()
+    await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())
+
+
+@dp.message(GoalForm.choosing_goal)
+async def handle_goal_choice(message: Message, state: FSMContext):
+    choices = {
+        "1": "calories_goal",
+        "2": "water_goal",
+        "3": "sleep_goal",
+        "4": "steps_goal",
+        "5": "all",
+    }
+
+    choice = message.text.strip()
+    goal_type = choices.get(choice)
+
+    if not goal_type:
+        await message.answer("❌ Некорректный выбор. Введите от 1 до 5.")
+        return
+
+    await state.update_data(goal_type=goal_type)
+
+    if goal_type == "all":
+        await message.answer(
+            "Введите цели в формате: калории вода сон шаги\nПример: 2500 2.5 8 10000"
+        )
+    else:
+        await message.answer("Введите новое значение:")
+
+    await state.set_state(GoalForm.updating_goal)
+
+
+@dp.message(GoalForm.updating_goal)
+async def handle_goal_update(message: Message, state: FSMContext):
+    telegram_id = message.from_user.id
+    data = await state.get_data()
+    goal_type = data["goal_type"]
+
+    try:
+        if goal_type == "all":
+            # парсим сразу 4 значения
+            c, w, s, st = message.text.strip().split()
+            payload = {
+                "calories_goal": int(c),
+                "water_goal": float(w),
+                "sleep_goal": int(s),
+                "steps_goal": int(st),
+            }
+        else:
+            value = message.text.strip()
+            if goal_type in ["calories_goal", "steps_goal", "sleep_goal"]:
+                value = int(value)
+            else:
+                value = float(value)
+            payload = {goal_type: value}
+
+        result = await update_goals(telegram_id, payload)
+
+        if result is True:
+            await message.answer("🎯 Цели обновлены успешно!")
+        else:
+            await message.answer("❌ Ошибка при обновлении")
+
+    except Exception:
+        await message.answer("❌ Ошибка. Убедитесь, что ввели данные правильно.\n")
+
     await state.clear()
     await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())

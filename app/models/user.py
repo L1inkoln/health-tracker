@@ -20,3 +20,9 @@ class User(Base):
     nutrition: Mapped["Nutrition"] = relationship(  # type: ignore  # noqa: F821
         "Nutrition", back_populates="user", uselist=False, passive_deletes=True
     )
+    goals: Mapped["UserGoals"] = relationship(  # type: ignore  # noqa: F821
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
