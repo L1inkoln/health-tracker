@@ -8,3 +8,4 @@ aiogram
 celery
 python-dotenv
 pyjwt
+wait-for-it
