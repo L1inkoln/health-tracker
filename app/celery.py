@@ -4,7 +4,7 @@ from celery.schedules import crontab
 
 celery_app = Celery(
     "tasks",
-    broker="amqp://user:newpassword@localhost//",
+    broker="amqp://guest:guest@rabbitmq:5672//",
     backend="rpc://",  # Использует AMQP для хранения результатов
 )
 

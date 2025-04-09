@@ -3,7 +3,7 @@ uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 alembic
-httpx                 # для async-запросов (например, в Aiogram)
+httpx
 aiogram
 celery
 python-dotenv
