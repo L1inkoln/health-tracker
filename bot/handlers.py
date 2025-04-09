@@ -109,6 +109,9 @@ async def handle_stats(callback_query: CallbackQuery):
     if callback_query.from_user is None:
         return
 
+    if callback_query.message is None:
+        return
+
     telegram_id = callback_query.from_user.id
 
     # Получаем статистику и цели
@@ -165,6 +168,8 @@ async def handle_stats(callback_query: CallbackQuery):
 @dp.callback_query(lambda c: c.data == "category_sleep")
 async def process_sleep(callback: CallbackQuery, state: FSMContext):
     await callback.answer()  # снимаем выделение кнопки
+    if callback.message is None:
+        return
     await callback.message.answer("Введите количество часов сна:")
     await state.set_state(Form.waiting_for_sleep)
 
@@ -172,6 +177,8 @@ async def process_sleep(callback: CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "category_nutrition")
 async def process_nutrition(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    if callback.message is None:
+        return
     await callback.message.answer(
         "Введите количество калорий и литры воды через пробел (например: `2500 0.5`):"
     )
@@ -181,6 +188,8 @@ async def process_nutrition(callback: CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "category_health")
 async def process_health(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    if callback.message is None:
+        return
     await callback.message.answer("Введите количество шагов:")
     await state.set_state(Form.waiting_for_health)
 
@@ -188,6 +197,8 @@ async def process_health(callback: CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "update_goals")
 async def choose_goal_to_update(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    if callback.message is None:
+        return
     await callback.message.answer(
         "Что хотите обновить?\n"
         "1️⃣ Калории\n"
@@ -202,11 +213,11 @@ async def choose_goal_to_update(callback: CallbackQuery, state: FSMContext):
 
 @dp.message(Form.waiting_for_sleep)
 async def handle_sleep_input(message: Message, state: FSMContext):
-    if message.from_user is None:
+    if message.from_user is None or message.text is None:
         return
     user_id = message.from_user.id
     try:
-        hours = int(message.text)
+        hours = float(message.text)
         if hours < 0 or hours > 24:
             await message.answer(
                 "❌ Некорректное значение. Введите количество часов сна от 0 до 24."
@@ -215,14 +226,14 @@ async def handle_sleep_input(message: Message, state: FSMContext):
             result = await update_sleep(user_telegram_id=user_id, hours=hours)
             await message.answer(result)
     except ValueError:
-        await message.answer(" ❌ Введите целое число.")
+        await message.answer("❌ Введите значение в литрах(например 1 или 0.5).")
     await state.clear()
     await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())
 
 
 @dp.message(Form.waiting_for_nutrition)
 async def handle_nutrition_input(message: Message, state: FSMContext):
-    if message.from_user is None:
+    if message.from_user is None or message.text is None:
         return
     try:
         calories_str, water_str = message.text.split()
@@ -249,7 +260,7 @@ async def handle_nutrition_input(message: Message, state: FSMContext):
 
 @dp.message(Form.waiting_for_health)
 async def handle_health_input(message: Message, state: FSMContext):
-    if message.from_user is None:
+    if message.from_user is None or message.text is None:
         return
     try:
         steps = int(message.text)
@@ -275,9 +286,9 @@ async def handle_goal_choice(message: Message, state: FSMContext):
         "4": "steps_goal",
         "5": "all",
     }
-
-    choice = message.text.strip()
-    goal_type = choices.get(choice)
+    if message.text is not None:
+        choice = message.text.strip()
+        goal_type = choices.get(choice)
 
     if not goal_type:
         await message.answer("❌ Некорректный выбор. Введите от 1 до 5.")
@@ -297,12 +308,13 @@ async def handle_goal_choice(message: Message, state: FSMContext):
 
 @dp.message(GoalForm.updating_goal)
 async def handle_goal_update(message: Message, state: FSMContext):
-    telegram_id = message.from_user.id
-    data = await state.get_data()
-    goal_type = data["goal_type"]
+    if message.from_user is not None:
+        telegram_id = message.from_user.id
+        data = await state.get_data()
+        goal_type = data["goal_type"]
 
     try:
-        if goal_type == "all":
+        if goal_type == "all" and message.text is not None:
             # парсим сразу 4 значения
             c, w, s, st = message.text.strip().split()
             payload = {
@@ -312,7 +324,7 @@ async def handle_goal_update(message: Message, state: FSMContext):
                 "steps_goal": int(st),
             }
         else:
-            value = message.text.strip()
+            value = message.text.strip()  # type: ignore
             if goal_type in ["calories_goal", "steps_goal", "sleep_goal"]:
                 value = int(value)
             else:

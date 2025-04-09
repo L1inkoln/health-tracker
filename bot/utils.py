@@ -146,7 +146,7 @@ def compare(val, norm, good_msg, low_msg):
         return f"⚠️ {low_msg} (норма: {norm})"
 
 
-async def update_sleep(user_telegram_id: int, hours: int):
+async def update_sleep(user_telegram_id: int, hours: float):
     """Обновляет количество часов сна для пользователя"""
     payload = {"user_telegram_id": user_telegram_id, "hours": hours}
     try:
