@@ -1,6 +1,10 @@
 from datetime import datetime
 import httpx
 from config import API_URL, BOT_SECRET
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Client для асинхронных запросов к API
 if API_URL is not None:
@@ -19,9 +23,9 @@ async def get_jwt_token():
             )
             response.raise_for_status()
             jwt_token = response.json()["access_token"]
-            print("✅ JWT токен успешно получен")
+            logger.info("✅ JWT токен успешно получен")
     except Exception as e:
-        print(f"❌ Ошибка при получении токена: {e}")
+        logger.info(f"❌ Ошибка при получении токена: {e}")
 
 
 async def register_user(telegram_id: int):

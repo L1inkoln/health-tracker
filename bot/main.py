@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 async def on_shutdown():
     """Закрытие клиента при завершении работы"""
     await client.aclose()
-    print("🚪 HTTP клиент закрыт")
+    logger.info("🚪 HTTP клиент закрыт")
 
 
 async def main():
-    print("✅ Бот запущен")
+    logger.info("✅ Бот запущен")
     await get_jwt_token()
     await set_bot_commands()
 

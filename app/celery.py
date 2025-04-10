@@ -3,23 +3,19 @@ from celery.schedules import crontab
 
 
 celery_app = Celery(
-    "tasks",
+    "app",
     broker="amqp://guest:guest@rabbitmq:5672//",
-    backend="rpc://",  # Использует AMQP для хранения результатов
+    backend="rpc://",
+    include=["app.tasks.reset"],  # указать, где лежат задачи
 )
 
 celery_app.conf.update(
-    worker_concurrency=1,  # Количество параллельных процессов
-    pool="solo",  # Использует один поток (удобно для отладки)
     timezone="Europe/Moscow",
-    enable_utc=True,
-)
-
-
-# Планировщик задач
-celery_app.conf.beat_schedule = {
-    "reset_daily_data": {
-        "task": "app.tasks.reset_daily_data",  # Убедись, что путь правильный
-        "schedule": crontab(hour=0, minute=0),
+    enable_utc=False,
+    beat_schedule={
+        "reset_daily_data": {
+            "task": "app.tasks.reset.reset_daily_data",  # путь к задаче
+            "schedule": crontab(hour=0, minute=0),  # обновление в 00:00
+        },
     },
-}
+)
