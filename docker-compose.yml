@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: python bot/main.py
+    command: bash -c "until curl -s http://api:8000/docs; do echo 'Waiting for API...'; sleep 2; done && python bot/main.py"
     env_file:
       - .env
     volumes:
