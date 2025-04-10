@@ -9,17 +9,16 @@ from aiogram.fsm.context import FSMContext
 from utils import (
     register_user,
     get_statistics,
-    send_main_menu,
     update_goals,
     update_sleep,
     update_nutrition,
     update_health,
-    plural_form,
-    compare,
     reset_statistics,
     delete_user,
     get_goals,
 )
+from helpers import menu_update, send_main_menu, generate_stat_message
+
 from dispatcher import dp
 
 
@@ -105,64 +104,22 @@ async def delete_user_handler(message: Message):
 @dp.callback_query(lambda c: c.data == "get_stats")
 async def handle_stats(callback_query: CallbackQuery):
     await callback_query.answer()
-
-    if callback_query.from_user is None:
-        return
-
-    if callback_query.message is None:
+    if not callback_query.from_user or not callback_query.message:
         return
 
     telegram_id = callback_query.from_user.id
-
     # Получаем статистику и цели
     stats = await get_statistics(telegram_id)
     goals = await get_goals(telegram_id)
 
     if isinstance(stats, dict) and isinstance(goals, dict):
-        # Цели пользователя
-        norm_calories = goals["calories_goal"]
-        norm_water = goals["water_goal"]
-        norm_sleep = goals["sleep_goal"]
-        norm_steps = goals["steps_goal"]
-
-        # Данные пользователя
-        calories = stats["calories"]
-        water = stats["water"]
-        sleep = stats["sleep"]
-        steps = stats["steps"]
-
-        # Форматирование окончаний
-        water_label = plural_form(water, ("литр", "литра", "литров"))
-        sleep_label = plural_form(sleep, ("час", "часа", "часов"))
-        steps_label = plural_form(steps, ("шаг", "шага", "шагов"))
-        calories_label = plural_form(calories, ("калория", "калории", "калорий"))
-
-        water_note = compare(water, norm_water, "Воды достаточно", "Недостаток воды")
-        sleep_note = compare(sleep, norm_sleep, "Сон в норме", "Недостаток сна")
-        steps_note = compare(steps, norm_steps, "Хорошая активность", "Мало шагов")
-        calories_note = compare(
-            calories, norm_calories, "Калорийность достаточная", "Недостаток калорий"
-        )
-
-        stats_message = (
-            f"📊 <b>Ваша статистика:</b>\n\n"
-            f"🍽 Калории: {calories} {calories_label}\n{calories_note}\n\n"
-            f"💧 Вода: {water} {water_label}\n{water_note}\n\n"
-            f"😴 Сон: {sleep} {sleep_label}\n{sleep_note}\n\n"
-            f"🚶 Шаги: {steps} {steps_label}\n{steps_note}"
-        )
-
+        stats_message = generate_stat_message(stats, goals)
         await callback_query.message.answer(stats_message, parse_mode="HTML")
         await callback_query.message.answer(
             "🔙 Возврат в меню", reply_markup=send_main_menu()
         )
-
     else:
         await callback_query.message.answer("❌ Ошибка получения данных.")
-        if not isinstance(stats, dict):
-            await callback_query.message.answer(f"❌ Статистика: {stats}")
-        if not isinstance(goals, dict):
-            await callback_query.message.answer(f"❌ Цели: {goals}")
 
 
 @dp.callback_query(lambda c: c.data == "category_sleep")
@@ -199,15 +156,7 @@ async def choose_goal_to_update(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     if callback.message is None:
         return
-    await callback.message.answer(
-        "Что хотите обновить?\n"
-        "1️⃣ Калории\n"
-        "2️⃣ Воду\n"
-        "3️⃣ Сон\n"
-        "4️⃣ Шаги\n"
-        "5️⃣ Все сразу\n\n"
-        "Введите номер (например: 1 или 5):"
-    )
+    await callback.message.answer(menu_update())
     await state.set_state(GoalForm.choosing_goal)
 
 
@@ -239,17 +188,13 @@ async def handle_nutrition_input(message: Message, state: FSMContext):
         calories_str, water_str = message.text.split()
         calories = int(calories_str)
         water = float(water_str)
-
-        if not (0 <= calories <= 10000):
-            await message.answer("❌ Калорий должно быть от 0 до 10000.")
-        elif not (0 <= water <= 10):
-            await message.answer("❌ Воды должно быть от 0 до 10 литров.")
+        if not (1 <= calories <= 10000):
+            await message.answer("❌ Калорий должно быть от 1 до 10000.")
+        elif not (0.1 <= water <= 10):
+            await message.answer("❌ Воды должно быть от 0.1 до 10 литров.")
         else:
-            result = await update_nutrition(
-                user_telegram_id=message.from_user.id, calories=calories, water=water
-            )
+            result = await update_nutrition(message.from_user.id, calories, water)
             await message.answer(result)
-
     except Exception:
         await message.answer(
             "❌ Ошибка введите данные в формате: калории вода (например: 2000 0.5)"
@@ -267,9 +212,7 @@ async def handle_health_input(message: Message, state: FSMContext):
         if steps < 0 or steps > 50000:
             await message.answer("❌ Шагов должно быть от 0 до 50000.")
         else:
-            result = await update_health(
-                user_telegram_id=message.from_user.id, steps=steps
-            )
+            result = await update_health(message.from_user.id, steps)
             await message.answer(result)
     except ValueError:
         await message.answer("❌ Ошибка введите целое число.")
@@ -289,13 +232,11 @@ async def handle_goal_choice(message: Message, state: FSMContext):
     if message.text is not None:
         choice = message.text.strip()
         goal_type = choices.get(choice)
-
     if not goal_type:
         await message.answer("❌ Некорректный выбор. Введите от 1 до 5.")
         return
 
     await state.update_data(goal_type=goal_type)
-
     if goal_type == "all":
         await message.answer(
             "Введите цели в формате: калории вода сон шаги\nПример: 2500 2.5 8 10000"
@@ -312,7 +253,6 @@ async def handle_goal_update(message: Message, state: FSMContext):
         telegram_id = message.from_user.id
         data = await state.get_data()
         goal_type = data["goal_type"]
-
     try:
         if goal_type == "all" and message.text is not None:
             # парсим сразу 4 значения
@@ -320,26 +260,22 @@ async def handle_goal_update(message: Message, state: FSMContext):
             payload = {
                 "calories_goal": int(c),
                 "water_goal": float(w),
-                "sleep_goal": int(s),
+                "sleep_goal": float(s),
                 "steps_goal": int(st),
             }
         else:
             value = message.text.strip()  # type: ignore
-            if goal_type in ["calories_goal", "steps_goal", "sleep_goal"]:
+            if goal_type in ["calories_goal", "steps_goal"]:
                 value = int(value)
             else:
                 value = float(value)
             payload = {goal_type: value}
-
         result = await update_goals(telegram_id, payload)
-
         if result is True:
             await message.answer("🎯 Цели обновлены успешно!")
         else:
             await message.answer("❌ Ошибка при обновлении")
-
     except Exception:
         await message.answer("❌ Ошибка. Убедитесь, что ввели данные правильно.\n")
-
     await state.clear()
     await message.answer("🔙 Возврат в меню", reply_markup=send_main_menu())
